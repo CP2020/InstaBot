@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import logging
 import logging.config
@@ -37,17 +38,18 @@ def install(client, configuration, db):
     was_followed_at = now - datetime.timedelta(hours=configuration.following_hours)
     User.create(
         following_depth=0,
-        instagram_id=instagram_id,
+        instagram_id=client.id,
         was_followed_at=was_followed_at, # To prevent attempts to follow user by himself.
-        were_followers_fetched=True,
         )
-    for follower_id in asyncio.run_until_complete(client.get_followers()):
+    loop = asyncio.get_event_loop()
+    for followed_id in loop.run_until_complete(client.get_followed(client.id)):
         User.create(
-            following_depth=1,
-            instagram_id=follower_id,
+            following_depth=0,
+            instagram_id=followed_id,
             is_followed=True,
             was_followed_at=was_followed_at,
             )
+    LOGGER.info('Followed users were saved in DB')
 
 def main():
     arguments = docopt(DOC, version=__version__)

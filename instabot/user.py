@@ -12,7 +12,7 @@ class User(Model):
     created = DateTimeField(default=datetime.datetime.utcnow)
 
     class Meta:
-        db = database_proxy
+        database = database_proxy
         indexes = (
             (('is_followed', 'was_followed_at'), False),
             (('were_followers_fetched', 'following_depth', 'created'), False)
