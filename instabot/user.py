@@ -1,0 +1,19 @@
+import datetime
+from peewee import *
+
+database_proxy = Proxy()
+
+class User(Model):
+    instagram_id = CharField(max_length=20, unique=True)
+    is_followed = BooleanField(default=False)
+    was_followed_at = DateTimeField(null=True)
+    were_followers_fetched = BooleanField(default=False)
+    following_depth = IntegerField()
+    created = DateTimeField(default=datetime.datetime.utcnow)
+
+    class Meta:
+        db = database_proxy
+        indexes = (
+            (('is_followed', 'was_followed_at'), False),
+            (('were_followers_fetched', 'following_depth', 'created'), False)
+            )
