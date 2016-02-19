@@ -26,10 +26,7 @@ Usage:
 Arguments:
   CONFIGURATION  Path to configuration.yml file.
 '''
-INSTAGRAM_API = 'https://api.instagram.com/v1'
 LOGGER = logging.getLogger('instabot')
-USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) ' \
-    'Chrome/23.0.1271.64 Safari/537.11'
 __version__ = '0.2'
 
 def install(client, configuration, db):
@@ -67,9 +64,9 @@ def main():
         install(client, configuration, db)
     else:
         LOGGER.info('Executing InstaBot')
-        run(clientconfiguration)
+        run(client, configuration)
 
-def run(configuration):
+def run(client, configuration):
     loop = asyncio.get_event_loop()
 
     stats_service = StatsService()
@@ -77,7 +74,7 @@ def run(configuration):
 
     user_service = UserService(client)
     loop.create_task(user_service.run())
-
+    
     following_service = FollowingService(client)
     loop.create_task(following_service.run())
 
@@ -86,5 +83,5 @@ def run(configuration):
 
     like_service = LikeService(client, media_service)
     loop.create_task(like_service.run())
-
+    
     loop.run_forever()

@@ -3,9 +3,8 @@ import asyncio
 import logging
 import json
 import re
-from .errors import APIError, APILimitError
+from .errors import APIError, APILimitError, APINotAllowedError
 
-API_URL = 'https://api.instagram.com/v1/'
 BASE_URL = 'https://www.instagram.com/'
 LOGGER = logging.getLogger('instabot')
 USER_AGENT = 'Mozilla/5.0 (X11; Ubuntu; Linux i686; rv:44.0) Gecko/20100101 Firefox/44.0'
@@ -36,22 +35,42 @@ class Client(object):
         if self._referer is not None:
             headers['Referer'] = self._referer
         url = BASE_URL + url
-        try:
-            response = yield from self._session.post(
-                url,
-                data=data,
-                headers=headers,
-                )
-            response = yield from response.text()
-        except Exception as e:
-            raise self._build_error(e)
+        response = yield from self._session.post(
+            url,
+            data=data,
+            headers=headers,
+            )
+        response = yield from response.text()
         return response
 
-    def _build_error(self, e):
-        if e.getcode() in (403, 429):
-            return APILimitError()
+    @asyncio.coroutine
+    def _api(self, path):
+        '''
+        @raise APIError
+        '''
+        response = yield from aiohttp.get(
+            'https://api.instagram.com/v1/{0}'.format(path),
+            params={
+                'client_id': self._client_id,
+                },
+            )
+        response = yield from response.json()
+        self._check_response(response)
+        return response
+
+    def _check_response(self, response):
+        '''
+        @raise APIError
+        '''
+        code = response['meta']['code']
+        if code == 200:
+            return
+        elif code == 400:
+            raise APINotAllowedError(response)
+        elif code in (403, 429):
+            raise APILimitError(response)
         else:
-            return APIError(e)
+            raise APIError(response)
 
     @asyncio.coroutine
     def _do_login(self):
@@ -65,9 +84,10 @@ class Client(object):
 
     @asyncio.coroutine
     def get_followed(self, user):
-        url = '{0}users/{1}/follows?client_id={2}'.format(API_URL, user, self._client_id)
-        response = yield from aiohttp.get(url)
-        response = yield from response.json()
+        '''
+        @raise APIError
+        '''
+        response = yield from self._api('users/{0}/follows'.format(user))
         followed = self._parse_followed(response)
         next_url = response['pagination'].get('next_url')
         while next_url:
@@ -81,11 +101,11 @@ class Client(object):
 
     @asyncio.coroutine
     def get_some_followers(self, user):
-        url = '{0}users/{1}/followed-by?client_id={2}'.format(API_URL, user, self._client_id)
-        response = yield from aiohttp.get(url)
-        response = yield from response.json()
+        '''
+        @raise APIError
+        '''
+        response = yield from self._api('users/{0}/followed-by'.format(user))
         followers = self._parse_followed(response)
-        LOGGER.debug('%d followers users were fetched.', len(followers))
         return followers
 
     @asyncio.coroutine
@@ -109,7 +129,11 @@ class Client(object):
         return (yield from response.text())
 
     def _parse_followed(self, response):
-        return [follower['id'] for follower in response['data']]
+        try:
+            response = response['data']
+        except KeyError:
+            raise APIError()
+        return [follower['id'] for follower in response]
 
     def _update_csrf_token(self):
         self._csrf_token = self._session.cookies['csrftoken'].value
