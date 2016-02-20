@@ -33,20 +33,23 @@ def install(client, configuration, db):
     db.create_tables([User])
     now = datetime.datetime.utcnow()
     was_followed_at = now - datetime.timedelta(hours=configuration.following_hours)
-    User.create(
+    user = User.create(
         following_depth=0,
         instagram_id=client.id,
+        username=configuration.instagram_username,
         was_followed_at=was_followed_at, # To prevent attempts to follow user by himself.
         )
     loop = asyncio.get_event_loop()
-    for followed_id in loop.run_until_complete(client.get_followed(client.id)):
+    followed_users_json = loop.run_until_complete(client.get_followed(user))
+    for followed_json in followed_users_json:
         User.create(
             following_depth=0,
-            instagram_id=followed_id,
+            instagram_id=followed_json['id'],
             is_followed=True,
+            username=followed_json['username'],
             was_followed_at=was_followed_at,
             )
-    LOGGER.info('Followed users were saved in DB')
+    LOGGER.info('{0} followed users were saved in DB'.format(len(followed_users_json)))
 
 def main():
     arguments = docopt(DOC, version=__version__)
@@ -75,7 +78,7 @@ def run(client, configuration):
     user_service = UserService(client)
     loop.create_task(user_service.run())
     
-    following_service = FollowingService(client)
+    following_service = FollowingService(client, configuration)
     loop.create_task(following_service.run())
 
     media_service = MediaService(configuration)

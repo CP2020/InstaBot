@@ -1,17 +1,14 @@
 class APIError(Exception):
-    def __init__(self, response):
-        super(APIError, self).__init__(
-            '{0} ({1}): {2}'.format(
-                response['meta']['code'],
-                response['meta']['error_type'],
-                response['meta']['error_message'],
-                )
-            )
+    def __init__(self, code):
+        super(APIError, self).__init__(str(code))
 
-class APILimitError(APIError):
+class APIJSONError(Exception):
     pass
 
-class APINotAllowedError(APIError):
+class APILimitError(APIJSONError):
+    pass
+
+class APINotAllowedError(APIJSONError):
     pass
 
 class DBError(Exception):

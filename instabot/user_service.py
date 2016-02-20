@@ -5,8 +5,8 @@ from .errors import APIError, APILimitError, APINotAllowedError
 from .stats_service import StatsService
 from .user import User
 
-LOGGER = logging.getLogger('instabot')
-USERS_LIMIT = 1000
+LOGGER = logging.getLogger('instabot.user_service')
+USERS_TO_FOLLOW_COUNT_MIN = 1000
 
 class UserService:
     def __init__(self, client):
@@ -16,23 +16,23 @@ class UserService:
     @asyncio.coroutine
     def run(self):
         while True:
-            LOGGER.debug('UserService cycle')
+            LOGGER.debug('Cycle')
             try:
                 yield from self._ensure_enough_users()
             except APILimitError as e:
-                LOGGER.debug('Fetching users. Instagram limits were reached: %s', e)
+                LOGGER.debug('Instagram limits were reached: %s', e)
                 yield from asyncio.sleep(60)
             except IOError as e:
-                LOGGER.debug('Fetching users. Some troubles: %s', e)
+                LOGGER.warning(e)
                 yield from asyncio.sleep(5)
             else:
-                yield from asyncio.sleep(5)
+                yield from asyncio.sleep(60)
 
     @asyncio.coroutine
     def _ensure_enough_users(self):
         users_to_follow_count = User.select().where(User.was_followed_at == None).count()
         LOGGER.debug('{0} users to follow found'.format(users_to_follow_count))
-        if users_to_follow_count < USERS_LIMIT:
+        if users_to_follow_count < USERS_TO_FOLLOW_COUNT_MIN:
             last_users_to_follow_count = users_to_follow_count
             for user in User.select().where(User.were_followers_fetched == False).order_by(
                 User.following_depth,
@@ -40,40 +40,40 @@ class UserService:
                 ):
                 following_depth = user.following_depth + 1
                 try:
-                    followers = yield from self._client.get_some_followers(user.instagram_id)
+                    followers_json = yield from self._client.get_some_followers(user)
                 except APINotAllowedError as e:
                     LOGGER.debug(
-                        'Fetching users. Can\'t fetch followers of {0}: {1}'.format(
-                            user.instagram_id,
+                        'Can\'t fetch followers of {0}: {1}'.format(
+                            user.username,
                             e,
                             ),
                         )
                     user.were_followers_fetched = True
                     user.save()
-                    yield from asyncio.sleep(.7)
                     continue
                 user.were_followers_fetched = True
                 user.save()
                 LOGGER.debug(
-                    'Fetching users. {0} followers of {1} were fetched'.format(
-                        len(followers),
-                        user.instagram_id,
+                    '{0} followers of {1} were fetched'.format(
+                        len(followers_json),
+                        user.username,
                         ),
                     )
-                for follower_id in followers:
+                for follower_json in followers_json:
                     try:
                         User.create(
-                            instagram_id=follower_id,
+                            instagram_id=follower_json['id'],
                             following_depth=following_depth,
+                            username=follower_json['username'],
                             )
                     except peewee.IntegrityError:
                         pass
                     else:
                         users_to_follow_count += 1
                         self._stats_service.increment('users_to_follow_fetched')
-                if users_to_follow_count >= USERS_LIMIT:
+                if users_to_follow_count >= USERS_TO_FOLLOW_COUNT_MIN:
                     break
             LOGGER.debug(
-                'Fetching users. %d users fetched.',
+                '%d users fetched.',
                 users_to_follow_count - last_users_to_follow_count,
                 )

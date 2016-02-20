@@ -18,12 +18,12 @@ class Configuration:
             self.db_password = configuration['db']['password']
             self.following_hours = configuration['following_hours']
             self.instagram_client_id = configuration['credentials']['client_id']
-            self.instagram_login = configuration['credentials']['login']
+            self.instagram_username = configuration['credentials']['username']
             self.instagram_password = configuration['credentials']['password']
             self.logging = configuration['logging']
             self.hashtags = configuration['hashtags']
         except KeyError as e:
-            sys.exit('Configuration is not fully specified: %s' % e)
+            sys.exit('Configuration is not fully specified. {0} is missed.'.format(e))
         try:
             self.following_hours = int(self.following_hours)
         except ValueError as e:
