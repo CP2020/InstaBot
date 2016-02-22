@@ -5,10 +5,16 @@ class APIError(Exception):
 class APIJSONError(Exception):
     pass
 
-class APILimitError(APIJSONError):
+class APILimitError(Exception):
     pass
 
-class APINotAllowedError(APIJSONError):
+class APINotAllowedError(Exception):
+    pass
+
+class APINotFoundError(Exception):
+    pass
+
+class ConfigurationError(Exception):
     pass
 
 class DBError(Exception):

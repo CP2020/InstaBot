@@ -1,28 +1,31 @@
 import asyncio
 import logging
 import peewee
-from .errors import APIError, APILimitError, APINotAllowedError
+from .errors import APIError, APIJSONError, APILimitError, APINotAllowedError, ConfigurationError
 from .stats_service import StatsService
 from .user import User
 
 LOGGER = logging.getLogger('instabot.user_service')
-USERS_TO_FOLLOW_COUNT_MIN = 1000
 
 class UserService:
-    def __init__(self, client):
+    def __init__(self, client, configuration):
         self._client = client
         self._stats_service = StatsService.get_instance()
+        self._users_to_follow_cache_size = configuration.users_to_follow_cache_size
+        if self._users_to_follow_cache_size == 0:
+            raise ConfigurationError('Users to follow count was set to 0.')
 
     @asyncio.coroutine
     def run(self):
         while True:
-            LOGGER.debug('Cycle')
             try:
                 yield from self._ensure_enough_users()
             except APILimitError as e:
-                LOGGER.debug('Instagram limits were reached: %s', e)
-                yield from asyncio.sleep(60)
-            except IOError as e:
+                LOGGER.debug('Instagram limits were reached. {}'.format(e))
+            except (APIError, APIJSONError, APINotAllowedError) as e:
+                LOGGER.debug(e)
+                yield from asyncio.sleep(5)
+            except (IOError, OSError) as e:
                 LOGGER.warning(e)
                 yield from asyncio.sleep(5)
             else:
@@ -32,7 +35,7 @@ class UserService:
     def _ensure_enough_users(self):
         users_to_follow_count = User.select().where(User.was_followed_at == None).count()
         LOGGER.debug('{0} users to follow found'.format(users_to_follow_count))
-        if users_to_follow_count < USERS_TO_FOLLOW_COUNT_MIN:
+        if users_to_follow_count < self._users_to_follow_cache_size:
             last_users_to_follow_count = users_to_follow_count
             for user in User.select().where(User.were_followers_fetched == False).order_by(
                 User.following_depth,

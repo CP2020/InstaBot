@@ -1,10 +1,13 @@
-import aiohttp
 import asyncio
 import itertools
+import logging
 import re
-import urllib
+import urllib.parse
+from .errors import ConfigurationError
+from aiohttp import ClientSession
 
-MEDIA_LENGTH_MIN = 100
+LOGGER = logging.getLogger('instabot.media_service')
+MEDIA_COUNT_MIN = 100
 WEBSTA_URL = 'http://websta.me/'
 
 class ScheduleError(Exception):
@@ -13,21 +16,34 @@ class ScheduleError(Exception):
 class MediaService(object):
     def __init__(self, configuration):
         self._hashtags = configuration.hashtags
+        if len(self._hashtags) == 0:
+            raise ConfigurationError('No hashtags were specified')
         self._media = []
+        self._session = ClientSession()
 
     @asyncio.coroutine
     def _get_media_by_hashtag(self, hashtag):
-        hashtag_url = '{0}tag/{1}'.format(WEBSTA_URL, urllib.quote(hashtag.encode('utf-8')))
-        response = yield from aiohttp.get(hashtag_url)
-        return re.findall('span class=\"like_count_([^\"]+)\"', response.text)
+        url = '{}tag/{}'.format(WEBSTA_URL, urllib.parse.quote(hashtag.encode('utf-8')))
+        response = yield from self._session.get(url)
+        response = yield from response.read()
+        response = response.decode('utf-8', errors='ignore')
+        media = re.findall('span class=\"like_count_([^\"]+)\"', response)
+        LOGGER.debug('{} media about \"{}\" were fetched'.format(len(media), hashtag))
+        return media
 
     @asyncio.coroutine
     def run(self):
         for hashtag in itertools.cycle(self._hashtags):
-            while len(self._media) < MEDIA_LENGTH_MIN:
-                self._media.extend((yield from self._get_media_by_hashtag(hashtag)))
-            while len(self._media) >= MEDIA_LENGTH_MIN:
-                yield from asyncio.sleep(5)
+            if len(self._media) < MEDIA_COUNT_MIN:
+                try:
+                    self._media.extend((yield from self._get_media_by_hashtag(hashtag)))
+                except (IOError, OSError) as e:
+                    LOGGER.warning(e)
+                    yield from asyncio.sleep(5)
+                else:
+                    yield from asyncio.sleep(3)
+            else:
+                yield from asyncio.sleep(30)
 
     @asyncio.coroutine
     def pop(self):
@@ -35,4 +51,5 @@ class MediaService(object):
             try:
                 return self._media.pop(0)
             except IndexError:
-                yield from asyncio.sleep(1)
+                LOGGER.debug('Has no media to pop')
+                yield from asyncio.sleep(5)

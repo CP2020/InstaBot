@@ -1,4 +1,7 @@
 import asyncio
+import logging
+
+LOGGER = logging.getLogger('instabot.stats_service')
 
 class Counter:
     def __init__(self):
@@ -12,7 +15,7 @@ class Counter:
         self._counter[key] = value + 1
 
     def report(self, prefix):
-        LOGGER.info('%s %s', prefix, str(self._counter))
+        LOGGER.info('{} {!s}'.format(prefix, self._counter))
 
 class StatsService:
     def __init__(self):
@@ -28,13 +31,13 @@ class StatsService:
     def run(self):
         hour = 0
         while True:
-            asyncio.sleep(60 * 60)
+            yield from asyncio.sleep(60 * 60)
             hour += 1
             if hour % 24 == 0:
-                self._daily_counter.report('Daily stats #{0}'.format(hour / 24))
+                self._daily_counter.report('Daily stats #{}'.format(hour / 24))
                 self._daily_counter.clear()
             else:
-                self._hourly_counter.report('Hourly stats #{0}'.format(hour))
+                self._hourly_counter.report('Hourly stats #{}'.format(hour))
             self._hourly_counter.clear()
 
     def increment(self, key):

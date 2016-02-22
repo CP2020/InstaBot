@@ -1,8 +1,9 @@
 import asyncio
 import logging
+from .errors import APIError, APIJSONError, APILimitError, APINotAllowedError, APINotFoundError
 from .stats_service import StatsService
 
-LOGGER = logging.getLogger('instabot')
+LOGGER = logging.getLogger('instabot.like_service')
 
 class LikeService:
     def __init__(self, client, media_service):
@@ -12,21 +13,21 @@ class LikeService:
 
     @asyncio.coroutine
     def run(self):
+        media = yield from self._media_service.pop()
         while True:
-            media = yield from self._media_service.pop()
-            while True:
-                try:
-                    yield from self._client.like(media)
-                except instagram.APIError as e:
-                    status_code = int(e.status_code)
-                    if status_code in (403, 429):
-                        LOGGER.debug('Instagram limits reached during liking: %s', e)
-                        yield from asyncio.sleep(60)
-                    else:
-                        LOGGER.debug('Something went wrong during liking: %s', e)
-                        yield from asyncio.sleep(5)
-                else:
-                    LOGGER.debug('Liked %s', media)
-                    self._stats_service.increment('liked')
-                    yield from asyncio.sleep(.7)
-                    break
+            try:
+                yield from self._client.like(media)
+            except APILimitError as e:
+                LOGGER.debug(e)
+            except (APIError, APIJSONError) as e:
+                LOGGER.debug(e)
+                yield from asyncio.sleep(5)
+            except (APINotAllowedError, APINotFoundError) as e:
+                LOGGER.debug('Can\'t like {}. {}'.format(media, str(e)))
+                media = yield from self._media_service.pop()
+            except (IOError, OSError) as e:
+                LOGGER.warning(e)
+                yield from asyncio.sleep(5)
+            else:
+                media = yield from self._media_service.pop()
+                self._stats_service.increment('liked')

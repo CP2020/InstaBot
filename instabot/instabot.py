@@ -5,6 +5,7 @@ import logging.config
 import sys
 from .configuration import Configuration
 from .db import get_db
+from .errors import ConfigurationError
 from .following_service import FollowingService
 from .like_service import LikeService
 from .media_service import MediaService
@@ -29,8 +30,9 @@ Arguments:
 LOGGER = logging.getLogger('instabot')
 __version__ = '0.2'
 
-def install(client, configuration, db):
+def install(configuration, db):
     db.create_tables([User])
+    client = instagram.Client(configuration)
     now = datetime.datetime.utcnow()
     was_followed_at = now - datetime.timedelta(hours=configuration.following_hours)
     user = User.create(
@@ -60,31 +62,40 @@ def main():
     logging.config.dictConfig(configuration.logging)
 
     db = get_db(configuration)
-    client = instagram.Client(configuration)
 
     if arguments['install']:
         LOGGER.info('Installing InstaBot')
-        install(client, configuration, db)
+        install(configuration, db)
     else:
         LOGGER.info('Executing InstaBot')
-        run(client, configuration)
+        run(configuration)
 
-def run(client, configuration):
+def run(configuration):
     loop = asyncio.get_event_loop()
 
     stats_service = StatsService()
     loop.create_task(stats_service.run())
 
-    user_service = UserService(client)
-    loop.create_task(user_service.run())
-    
-    following_service = FollowingService(client, configuration)
+    following_client = instagram.Client(configuration)
+
+    try:
+        user_service = UserService(following_client, configuration)
+    except ConfigurationError as e:
+        LOGGER.info('UserService wasn\'t started. {}'.format(e))
+    else:
+        loop.create_task(user_service.run())
+
+    following_service = FollowingService(following_client, configuration)
     loop.create_task(following_service.run())
 
-    media_service = MediaService(configuration)
-    loop.create_task(media_service.run())
-
-    like_service = LikeService(client, media_service)
-    loop.create_task(like_service.run())
+    try:
+        media_service = MediaService(configuration)
+    except ConfigurationError as e:
+        LOGGER.info('MediaService wasn\'t started. {}'.format(e))
+    else:
+        loop.create_task(media_service.run())
+        like_client = instagram.Client(configuration)
+        like_service = LikeService(like_client, media_service)
+        loop.create_task(like_service.run())
     
     loop.run_forever()

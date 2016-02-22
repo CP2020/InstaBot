@@ -8,7 +8,7 @@ class User(Model):
     following_depth = IntegerField()
     instagram_id = CharField(max_length=20, unique=True)
     is_followed = BooleanField(default=False)
-    username = CharField(max_length=60)
+    username = CharField(max_length=30)
     was_followed_at = DateTimeField(null=True)
     were_followers_fetched = BooleanField(default=False)
 

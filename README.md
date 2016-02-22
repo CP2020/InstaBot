@@ -1,27 +1,31 @@
 # Instagram Bot
 
-A simple Instagram bot that cycles through hashtags listed at a file and automatically likes pictures with those hashtags to get more followers.
+Instagram bot that cycles through specified hashtags and automatically likes pictures with those hashtags to get more followers. The bot also follows people and unfollows them after specified period of time. Unfollowed people are saved in DB to prevent following them again. To find new people to follow it uses followers of people you have followed.
 
-## Setup
+During installation process it saves people followed by you as "followed long time ago" and unfollows them at the first start.
 
-At first, get the source. Clone this repository:
+## Deployment
 
-    $ git clone https://github.com/quasiyoke/InstaBot.git
+    $ virtualenv --python=/usr/bin/python3 instabotenv
+    $ cd instabotenv
+    $ source bin/activate
+    (instabotenv) $ git clone https://github.com/quasiyoke/InstaBot.git
+    (instabotenv) $ pip install -r requirements.txt
 
-### Requirements
+Create MySQL DB:
 
-You can install all needed requirements with single command:
+```mysql
+CREATE DATABASE IF NOT EXISTS instagram CHARACTER SET utf8 COLLATE utf8_general_ci;
+CREATE USER instabot@localhost IDENTIFIED BY 'GT8H!b]5,9}A7';
+GRANT ALL ON instagram.* TO instabot@localhost;
+```
 
-    $ pip install -r requirements.txt
-
-### Configuration
-
-Create `configuration.yml` file containing your information, e.g.:
+Create `configuration.yml` file containing your credentials, e.g.:
 
 ```yaml
 credentials:
   client_id: "1eac8774163c2fc938db3a0ee82a6873"
-  login: "your_login"
+  username: "your_username"
   password: "eKeFB2;AW6fS}z"
 db:
   host: "localhost"
@@ -29,6 +33,16 @@ db:
   user: "instabot"
   password: "GT8H!b]5,9}A7"
 following_hours: 120
+hashtags:
+  - I
+  - люблю
+  - Python
+instagram:
+  limit_sleep_time_coefficient: 1.3
+  limit_sleep_time_min: 30
+  success_sleep_time_coefficient: 0.5
+  success_sleep_time_max: 6
+  success_sleep_time_min: 4
 logging:
   version: 1
   formatters:
@@ -40,24 +54,27 @@ logging:
       class: logging.StreamHandler
       level: DEBUG
       formatter: simple
+  loggers:
+    instabot:
+      level: DEBUG
   root:
     level: DEBUG
     handlers:
       - console
-hashtags:
-  - I
-  - love
-  - Python
+users_to_follow_cache_size: 300
 ```
 
-Execute this at MySQL console:
+Where:
 
-    CREATE DATABASE IF NOT EXISTS instagram CHARACTER SET utf8 COLLATE utf8_general_ci;
-    CREATE USER instabot@localhost IDENTIFIED BY 'GT8H!b]5,9}A7';
-    GRANT ALL ON instagram.* TO instabot@localhost;
+* `following_hours` -- how much users will be followed.
+* `hashtags` -- list of hashtags to get photos to like. Optional. By default bot won't like anything.
+* `logging` -- logging setup as described in [this howto](https://docs.python.org/3/howto/logging.html).
+* `users_to_follow_cache_size` -- how much users should be fetched for following. The cache is being filled in once a minute. Optional. By default bot won't follow anybody.
 
-## Launching
+Create necessary DB tables:
+
+    $ ./instabot_runner.py install configuration.yml
 
 Run:
 
-    $ ./instabot_runner.py
+    $ ./instabot_runner.py configuration.yml
