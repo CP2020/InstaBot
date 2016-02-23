@@ -4,6 +4,7 @@ import peewee
 from .errors import APIError, APIJSONError, APILimitError, APINotAllowedError, ConfigurationError
 from .stats_service import StatsService
 from .user import User
+from aiohttp.errors import ClientResponseError
 
 LOGGER = logging.getLogger('instabot.user_service')
 
@@ -25,7 +26,7 @@ class UserService:
             except (APIError, APIJSONError, APINotAllowedError) as e:
                 LOGGER.debug(e)
                 yield from asyncio.sleep(5)
-            except (IOError, OSError) as e:
+            except (IOError, OSError, ClientResponseError) as e:
                 LOGGER.warning(e)
                 yield from asyncio.sleep(5)
             else:
@@ -74,7 +75,7 @@ class UserService:
                     else:
                         users_to_follow_count += 1
                         self._stats_service.increment('users_to_follow_fetched')
-                if users_to_follow_count >= USERS_TO_FOLLOW_COUNT_MIN:
+                if users_to_follow_count >= self._users_to_follow_cache_size:
                     break
             LOGGER.debug(
                 '%d users fetched.',

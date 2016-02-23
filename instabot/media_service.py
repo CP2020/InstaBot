@@ -5,6 +5,7 @@ import re
 import urllib.parse
 from .errors import ConfigurationError
 from aiohttp import ClientSession
+from aiohttp.errors import ClientResponseError
 
 LOGGER = logging.getLogger('instabot.media_service')
 MEDIA_COUNT_MIN = 100
@@ -37,7 +38,7 @@ class MediaService(object):
             if len(self._media) < MEDIA_COUNT_MIN:
                 try:
                     self._media.extend((yield from self._get_media_by_hashtag(hashtag)))
-                except (IOError, OSError) as e:
+                except (IOError, OSError, ClientResponseError) as e:
                     LOGGER.warning(e)
                     yield from asyncio.sleep(5)
                 else:

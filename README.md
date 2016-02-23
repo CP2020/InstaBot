@@ -1,4 +1,4 @@
-# Instagram Bot
+# InstaBot
 
 Instagram bot that cycles through specified hashtags and automatically likes pictures with those hashtags to get more followers. The bot also follows people and unfollows them after specified period of time. Unfollowed people are saved in DB to prevent following them again. To find new people to follow it uses followers of people you have followed.
 
@@ -14,7 +14,7 @@ During installation process it saves people followed by you as "followed long ti
 
 Create MySQL DB:
 
-```mysql
+```sql
 CREATE DATABASE IF NOT EXISTS instagram CHARACTER SET utf8 COLLATE utf8_general_ci;
 CREATE USER instabot@localhost IDENTIFIED BY 'GT8H!b]5,9}A7';
 GRANT ALL ON instagram.* TO instabot@localhost;
@@ -66,10 +66,10 @@ users_to_follow_cache_size: 300
 
 Where:
 
-* `following_hours` -- how much users will be followed.
-* `hashtags` -- list of hashtags to get photos to like. Optional. By default bot won't like anything.
-* `logging` -- logging setup as described in [this howto](https://docs.python.org/3/howto/logging.html).
-* `users_to_follow_cache_size` -- how much users should be fetched for following. The cache is being filled in once a minute. Optional. By default bot won't follow anybody.
+* `following_hours` — how long users will stay followed.
+* `hashtags` — list of hashtags to get photos to like. Optional. By default bot won't like anything.
+* `logging` — logging setup as described in [this howto](https://docs.python.org/3/howto/logging.html).
+* `users_to_follow_cache_size` — how much users should be fetched for following. The cache is being filled in once a minute. Optional. By default bot won't follow anybody.
 
 Create necessary DB tables:
 

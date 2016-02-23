@@ -4,6 +4,7 @@ import logging
 from .errors import APIError, APIJSONError, APILimitError, APINotAllowedError, APINotFoundError
 from .stats_service import StatsService
 from .user import User
+from aiohttp.errors import ClientResponseError
 
 LOGGER = logging.getLogger('instabot.following_service')
 
@@ -24,7 +25,7 @@ class FollowingService:
             except (APIError, APIJSONError) as e:
                 LOGGER.debug(e)
                 yield from asyncio.sleep(5)
-            except (IOError, OSError) as e:
+            except (IOError, OSError, ClientResponseError) as e:
                 LOGGER.warning(e)
                 yield from asyncio.sleep(5)
             else:

@@ -2,6 +2,7 @@ import asyncio
 import logging
 from .errors import APIError, APIJSONError, APILimitError, APINotAllowedError, APINotFoundError
 from .stats_service import StatsService
+from aiohttp.errors import ClientResponseError
 
 LOGGER = logging.getLogger('instabot.like_service')
 
@@ -25,7 +26,7 @@ class LikeService:
             except (APINotAllowedError, APINotFoundError) as e:
                 LOGGER.debug('Can\'t like {}. {}'.format(media, str(e)))
                 media = yield from self._media_service.pop()
-            except (IOError, OSError) as e:
+            except (IOError, OSError, ClientResponseError) as e:
                 LOGGER.warning(e)
                 yield from asyncio.sleep(5)
             else:
