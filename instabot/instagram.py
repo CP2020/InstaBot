@@ -63,6 +63,8 @@ class Client(object):
             headers=headers,
             )
         if response.status == 404:
+            yield from response.close()
+            yield from self._sleep_success()
             raise APINotFoundError('404 for {}'.format(url))
         text = yield from response.text()
         try:
@@ -80,10 +82,13 @@ class Client(object):
                 response=response,
                 ),
             if response.status == 200:
+                yield from self._sleep_success()
                 raise APIError(message)
             elif response.status == 400:
+                yield from self._sleep_success()
                 raise APINotAllowedError(message)
             else:
+                yield from self._sleep_success()
                 raise APIError(message)
         if response_json.get('status') != 'ok':
             raise APIError('AJAX request to {} is not OK: {}'.format(url, response_json))
@@ -125,10 +130,10 @@ class Client(object):
         code = response['meta']['code']
         if code == 200:
             return
-        message = '{0} ({1}): {2}'.format(
-            code,
-            response['meta']['error_type'],
-            response['meta']['error_message'],
+        message = '{code} ({type}): {message}'.format(
+            code=code,
+            type=response['meta']['error_type'],
+            message=response['meta']['error_message'],
             )
         if code == 400:
             raise APINotAllowedError(message)
@@ -196,7 +201,7 @@ class Client(object):
             response = yield from self._api(url=next_url)
             followed.extend(response['data'])
             next_url = response['pagination'].get('next_url')
-        LOGGER.debug('%d followed users were fetched.', len(followed))
+        LOGGER.debug('{} followed users were fetched'.format(len(followed)))
         return followed
 
     @asyncio.coroutine
