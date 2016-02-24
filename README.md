@@ -10,6 +10,7 @@ During installation process it saves people followed by you as "followed long ti
     $ cd instabotenv
     $ source bin/activate
     (instabotenv) $ git clone https://github.com/quasiyoke/InstaBot.git
+    (instabotenv) $ cd InstaBot
     (instabotenv) $ pip install -r requirements.txt
 
 Create MySQL DB:
@@ -54,6 +55,14 @@ logging:
       class: logging.StreamHandler
       level: DEBUG
       formatter: simple
+    file:
+      class: logging.handlers.RotatingFileHandler
+      level: DEBUG
+      formatter: simple
+      filename: log.log
+      maxBytes: 10485760
+      backupCount: 10
+      encoding: utf-8
   loggers:
     instabot:
       level: DEBUG
