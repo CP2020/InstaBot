@@ -73,8 +73,8 @@ Where:
 
 Create necessary DB tables:
 
-    $ ./instabot_runner.py install configuration.yml
+    (instabotenv) $ ./instabot_runner.py install configuration.yml
 
 Run:
 
-    $ ./instabot_runner.py configuration.yml
+    (instabotenv) $ ./instabot_runner.py configuration.yml

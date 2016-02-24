@@ -35,7 +35,7 @@ class UserService:
     @asyncio.coroutine
     def _ensure_enough_users(self):
         users_to_follow_count = User.select().where(User.was_followed_at == None).count()
-        LOGGER.debug('{0} users to follow found'.format(users_to_follow_count))
+        LOGGER.debug('{} users to follow found'.format(users_to_follow_count))
         if users_to_follow_count < self._users_to_follow_cache_size:
             last_users_to_follow_count = users_to_follow_count
             for user in User.select().where(User.were_followers_fetched == False).order_by(
@@ -47,7 +47,7 @@ class UserService:
                     followers_json = yield from self._client.get_some_followers(user)
                 except APINotAllowedError as e:
                     LOGGER.debug(
-                        'Can\'t fetch followers of {0}: {1}'.format(
+                        'Can\'t fetch followers of {}. {}'.format(
                             user.username,
                             e,
                             ),
@@ -58,7 +58,7 @@ class UserService:
                 user.were_followers_fetched = True
                 user.save()
                 LOGGER.debug(
-                    '{0} followers of {1} were fetched'.format(
+                    '{} followers of {} were fetched'.format(
                         len(followers_json),
                         user.username,
                         ),
@@ -78,6 +78,6 @@ class UserService:
                 if users_to_follow_count >= self._users_to_follow_cache_size:
                     break
             LOGGER.debug(
-                '%d users fetched.',
+                '%d users saved in DB',
                 users_to_follow_count - last_users_to_follow_count,
                 )
