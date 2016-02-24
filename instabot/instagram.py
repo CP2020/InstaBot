@@ -63,11 +63,11 @@ class Client(object):
             headers=headers,
             )
         if response.status == 404:
-            yield from response.close()
+            response.close()
             yield from self._sleep_success()
             raise APINotFoundError('AJAX response status code is 404 for {}'.format(url))
         elif 500 <= response.status < 600:
-            yield from response.close()
+            response.close()
             yield from self._sleep_success()
             raise APIError(response.status)
         text = yield from response.text()
