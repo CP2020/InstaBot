@@ -97,5 +97,5 @@ def run(configuration):
         like_client = instagram.Client(configuration)
         like_service = LikeService(like_client, media_service)
         loop.create_task(like_service.run())
-    
+
     loop.run_forever()

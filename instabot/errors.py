@@ -19,3 +19,6 @@ class ConfigurationError(Exception):
 
 class DBError(Exception):
     pass
+
+class MediaError(Exception):
+    pass

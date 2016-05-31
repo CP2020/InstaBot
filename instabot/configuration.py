@@ -2,7 +2,7 @@ import logging
 import sys
 import yaml
 
-LOGGER = logging.getLogger('instabot')
+LOGGER = logging.getLogger('instabot.configuration')
 
 class Configuration:
     def __init__(self, filename):

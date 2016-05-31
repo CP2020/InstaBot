@@ -1,13 +1,12 @@
 import asyncio
 import logging
 import json
-import re
 from .errors import APIError, APIJSONError, APILimitError, APINotAllowedError, APINotFoundError
 from aiohttp import ClientSession
 
 BASE_URL = 'https://www.instagram.com/'
 LOGGER = logging.getLogger('instabot.instagram')
-USER_AGENT = 'Mozilla/5.0 (X11; Ubuntu; Linux i686; rv:44.0) Gecko/20100101 Firefox/44.0'
+USER_AGENT = 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:46.0) Gecko/20100101 Firefox/46.0'
 
 class Client(object):
     def __init__(self, configuration):

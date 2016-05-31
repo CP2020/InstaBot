@@ -34,7 +34,7 @@ class StatsService:
             yield from asyncio.sleep(60 * 60)
             hour += 1
             if hour % 24 == 0:
-                self._daily_counter.report('Daily stats #{}'.format(hour / 24))
+                self._daily_counter.report('Daily stats #{:.0f}'.format(hour / 24))
                 self._daily_counter.clear()
             else:
                 self._hourly_counter.report('Hourly stats #{}'.format(hour))
