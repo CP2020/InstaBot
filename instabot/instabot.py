@@ -28,7 +28,7 @@ Arguments:
   CONFIGURATION  Path to configuration.yml file.
 '''
 LOGGER = logging.getLogger('instabot')
-__version__ = '0.2.1'
+__version__ = '0.2.2'
 
 def install(configuration, db):
     db.create_tables([User])
