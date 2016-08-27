@@ -11,15 +11,13 @@ class Configuration:
             with open(filename, 'r') as f:
                 configuration = yaml.safe_load(f)
         except (IOError, OSError, ValueError) as e:
-            sys.exit('Can\'t obtain configuration: %s' % e)
+            sys.exit('Can\'t obtain configuration: {}'.format(e))
         try:
             self.db_host = configuration['db']['host']
             self.db_name = configuration['db']['name']
             self.db_user = configuration['db']['user']
             self.db_password = configuration['db']['password']
             self.following_hours = configuration['following_hours']
-            self.instagram_client_id = \
-                configuration['credentials']['client_id']
             self.instagram_limit_sleep_time_coefficient = \
                 configuration['instagram']['limit_sleep_time_coefficient']
             self.instagram_limit_sleep_time_min = \

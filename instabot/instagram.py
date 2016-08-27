@@ -7,23 +7,22 @@ from aiohttp import ClientSession
 
 BASE_URL = 'https://www.instagram.com/'
 LOGGER = logging.getLogger('instabot.instagram')
-USER_AGENT = 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:46.0) ' \
-    'Gecko/20100101 Firefox/46.0'
+USER_AGENT = 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:48.0) ' \
+    'Gecko/20100101 Firefox/48.0'
 
 
 class Client(object):
     def __init__(self, configuration):
-        self._client_id = configuration.instagram_client_id
-        self._limit_sleep_time_coefficient = configuration
-        .instagram_limit_sleep_time_coefficient
-        self._limit_sleep_time_min = configuration
-        .instagram_limit_sleep_time_min
-        self._success_sleep_time_coefficient = configuration
-        .instagram_success_sleep_time_coefficient
-        self._success_sleep_time_max = configuration
-        .instagram_success_sleep_time_max
-        self._success_sleep_time_min = configuration
-        .instagram_success_sleep_time_min
+        self._limit_sleep_time_coefficient = configuration \
+            .instagram_limit_sleep_time_coefficient
+        self._limit_sleep_time_min = configuration \
+            .instagram_limit_sleep_time_min
+        self._success_sleep_time_coefficient = configuration \
+            .instagram_success_sleep_time_coefficient
+        self._success_sleep_time_max = configuration \
+            .instagram_success_sleep_time_max
+        self._success_sleep_time_min = configuration \
+            .instagram_success_sleep_time_min
         self._limit_sleep_time = self._limit_sleep_time_min
         self._success_sleep_time = self._success_sleep_time_max
         self._username = configuration.instagram_username
@@ -40,11 +39,6 @@ class Client(object):
                 'X-Requested-With': 'XMLHttpRequest',
                 },
             )
-        self._anonymous_session = ClientSession(
-            headers={
-                'User-Agent': USER_AGENT,
-                },
-            )
         loop = asyncio.get_event_loop()
         loop.run_until_complete(self._do_login())
 
@@ -58,11 +52,11 @@ class Client(object):
         '''
         if referer is not None:
             self._referer = referer
+        url = BASE_URL + url
         headers = {
             'Referer': self._referer,
             'X-CSRFToken': self._csrf_token,
             }
-        url = BASE_URL + url
         response = await self._session.post(
             url,
             data=data,
@@ -111,55 +105,6 @@ class Client(object):
         await self._sleep_success()
         return response_json
 
-    async def _api(self, path=None, url=None):
-        '''
-        @raise APIJSONError
-        @raise APILimitError
-        @raise APINotAllowedError
-        @raise APIError
-        '''
-        if url is None:
-            url = 'https://api.instagram.com/v1/{}'.format(path)
-        response = await self._anonymous_session.get(
-            url,
-            params={
-                'client_id': self._client_id,
-                },
-            )
-        response = await response.text()
-        try:
-            response = json.loads(response)
-        except ValueError as e:
-            raise APIError(
-                'Bad response for {}: {} Response: {}'
-                .format(url, e, response),
-                )
-        await self._check_api_response(response)
-        await self._sleep_success()
-        return response
-
-    async def _check_api_response(self, response):
-        '''
-        @raise APIJSONError
-        @raise APILimitError
-        @raise APINotAllowedError
-        '''
-        code = response['meta']['code']
-        if code == 200:
-            return
-        message = '{code} ({type}): {message}'.format(
-            code=code,
-            type=response['meta']['error_type'],
-            message=response['meta']['error_message'],
-            )
-        if code == 400:
-            raise APINotAllowedError(message)
-        elif code in (403, 429):
-            await self._sleep_limit()
-            raise APILimitError(message)
-        else:
-            raise APIJSONError(message)
-
     async def _do_login(self):
         '''
         @raise APIJSONError
@@ -206,21 +151,67 @@ class Client(object):
             LOGGER.debug('{} was followed'.format(user.username))
 
     async def get_followed(self, user):
+        '''Fetches information about people followed by given user.
+
+        Args:
+            user (User): Whose subscriptions should be fetched.
+
+        Returns:
+            List of dicts containing following fields:
+            {
+                'id': 123,
+                'username': 'foobar',
+            }
+
+        Raises:
+            APIJSONError
+            APILimitError
+            APINotAllowedError
+            APIError
+
         '''
-        @raise APIJSONError
-        @raise APILimitError
-        @raise APINotAllowedError
-        @raise APIError
-        '''
-        response = await self._api(
-            'users/{}/follows'.format(user.instagram_id),
+        SINGLE_RESPONSE_SIZE = 50
+
+        response = await self._ajax(
+            'query',
+            {
+                'q': 'ig_user({id}) {{  follows.first({count}) {{    count,'
+                '    page_info {{      end_cursor,      has_next_page    }},'
+                '    nodes {{      id,      is_verified,'
+                '      followed_by_viewer,      requested_by_viewer,'
+                '      full_name,      profile_pic_url,'
+                '      username    }}  }}}}'
+                .format(
+                    id=user.instagram_id,
+                    count=SINGLE_RESPONSE_SIZE,
+                    ),
+                'ref': 'relationships::follow_list'
+                },
+            referer=user.get_url(),
             )
-        followed = response['data']
-        next_url = response['pagination'].get('next_url')
-        while next_url:
-            response = await self._api(url=next_url)
-            followed.extend(response['data'])
-            next_url = response['pagination'].get('next_url')
+        followed_count = response['follows']['count']
+        followed = response['follows']['nodes']
+        while response['follows']['page_info']['has_next_page']:
+            end_cursor = response['follows']['page_info']['end_cursor']
+            response = await self._ajax(
+                'query',
+                {
+                    'q': 'ig_user({id}) {{  follows.after({end_cursor},'
+                    ' {count}) {{    count,    page_info {{      end_cursor,'
+                    '      has_next_page    }},    nodes {{      id,'
+                    '      is_verified,      followed_by_viewer,'
+                    '      requested_by_viewer,      full_name,'
+                    '      profile_pic_url,      username    }}  }}}}'
+                    .format(
+                        id=user.instagram_id,
+                        end_cursor=end_cursor,
+                        count=SINGLE_RESPONSE_SIZE,
+                        ),
+                    'ref': 'relationships::follow_list'
+                    },
+                referer=user.get_url(),
+                )
+            followed.extend(response['follows']['nodes'])
         LOGGER.debug('{} followed users were fetched'.format(len(followed)))
         return followed
 

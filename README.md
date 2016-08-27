@@ -4,6 +4,8 @@ Instagram bot written in Python 3.5 that cycles through specified hashtags and a
 
 During installation process it saves people followed by you as "followed long time ago" and unfollows them at the first start.
 
+The bot doesn't use Instagram API so all credentials you need are your login and password.
+
 ## Deployment
 
     $ virtualenv --python=/usr/bin/python3 instabotenv
@@ -25,7 +27,6 @@ Create `configuration.yml` file containing your credentials, e.g.:
 
 ```yaml
 credentials:
-  client_id: "1eac8774163c2fc938db3a0ee82a6873"
   username: "your_username"
   password: "eKeFB2;AW6fS}z"
 db:
