@@ -1,10 +1,12 @@
 import asyncio
 import logging
-from .errors import APIError, APIJSONError, APILimitError, APINotAllowedError, APINotFoundError
+from .errors import APIError, APIJSONError, APILimitError, \
+    APINotAllowedError, APINotFoundError
 from .stats_service import StatsService
 from aiohttp.errors import ClientResponseError
 
 LOGGER = logging.getLogger('instabot.like_service')
+
 
 class LikeService:
     def __init__(self, client, media_service):

@@ -30,16 +30,19 @@ Arguments:
 LOGGER = logging.getLogger('instabot')
 __version__ = '0.2.2'
 
+
 def install(configuration, db):
     db.create_tables([User])
     client = instagram.Client(configuration)
     now = datetime.datetime.utcnow()
-    was_followed_at = now - datetime.timedelta(hours=configuration.following_hours)
+    was_followed_at = now - \
+        datetime.timedelta(hours=configuration.following_hours)
     user = User.create(
         following_depth=0,
         instagram_id=client.id,
         username=configuration.instagram_username,
-        was_followed_at=was_followed_at, # To prevent attempts to follow user by himself.
+        # To prevent attempts to follow user by himself.
+        was_followed_at=was_followed_at,
         )
     loop = asyncio.get_event_loop()
     followed_users_json = loop.run_until_complete(client.get_followed(user))
@@ -51,7 +54,10 @@ def install(configuration, db):
             username=followed_json['username'],
             was_followed_at=was_followed_at,
             )
-    LOGGER.info('{0} followed users were saved in DB'.format(len(followed_users_json)))
+    LOGGER.info(
+        '{0} followed users were saved in DB'.format(len(followed_users_json)),
+        )
+
 
 def main():
     arguments = docopt(DOC, version=__version__)
@@ -69,6 +75,7 @@ def main():
     else:
         LOGGER.info('Executing InstaBot')
         run(configuration)
+
 
 def run(configuration):
     loop = asyncio.get_event_loop()

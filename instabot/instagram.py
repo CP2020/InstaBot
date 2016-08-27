@@ -1,21 +1,29 @@
 import asyncio
 import logging
 import json
-from .errors import APIError, APIJSONError, APILimitError, APINotAllowedError, APINotFoundError
+from .errors import APIError, APIJSONError, APILimitError, \
+    APINotAllowedError, APINotFoundError
 from aiohttp import ClientSession
 
 BASE_URL = 'https://www.instagram.com/'
 LOGGER = logging.getLogger('instabot.instagram')
-USER_AGENT = 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:46.0) Gecko/20100101 Firefox/46.0'
+USER_AGENT = 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:46.0) ' \
+    'Gecko/20100101 Firefox/46.0'
+
 
 class Client(object):
     def __init__(self, configuration):
         self._client_id = configuration.instagram_client_id
-        self._limit_sleep_time_coefficient = configuration.instagram_limit_sleep_time_coefficient
-        self._limit_sleep_time_min = configuration.instagram_limit_sleep_time_min
-        self._success_sleep_time_coefficient = configuration.instagram_success_sleep_time_coefficient
-        self._success_sleep_time_max = configuration.instagram_success_sleep_time_max
-        self._success_sleep_time_min = configuration.instagram_success_sleep_time_min
+        self._limit_sleep_time_coefficient = configuration
+        .instagram_limit_sleep_time_coefficient
+        self._limit_sleep_time_min = configuration
+        .instagram_limit_sleep_time_min
+        self._success_sleep_time_coefficient = configuration
+        .instagram_success_sleep_time_coefficient
+        self._success_sleep_time_max = configuration
+        .instagram_success_sleep_time_max
+        self._success_sleep_time_min = configuration
+        .instagram_success_sleep_time_min
         self._limit_sleep_time = self._limit_sleep_time_min
         self._success_sleep_time = self._success_sleep_time_max
         self._username = configuration.instagram_username
@@ -64,7 +72,9 @@ class Client(object):
         if response.status == 404:
             response.close()
             yield from self._sleep_success()
-            raise APINotFoundError('AJAX response status code is 404 for {}'.format(url))
+            raise APINotFoundError(
+                'AJAX response status code is 404 for {}'.format(url),
+                )
         elif 500 <= response.status < 600:
             response.close()
             yield from self._sleep_success()
@@ -75,15 +85,17 @@ class Client(object):
         except ValueError as e:
             if 'too many requests' in text or 'temporarily blocked' in text:
                 yield from self._sleep_limit()
-                raise APILimitError('Too many AJAX requests. URL: {}'.format(url))
+                raise APILimitError(
+                    'Too many AJAX requests. URL: {}'.format(url),
+                    )
             message = 'AJAX request to {url} is not JSON: {error} ' \
                 'Response ({status}): \"{text}\"'.format(
-                url=url,
-                error=e,
-                status=response.status,
-                text=text,
-                response=response,
-                ),
+                    url=url,
+                    error=e,
+                    status=response.status,
+                    text=text,
+                    response=response,
+                    ),
             if response.status == 200:
                 yield from self._sleep_success()
                 raise APIError(message)
@@ -94,7 +106,9 @@ class Client(object):
                 yield from self._sleep_success()
                 raise APIError(message)
         if response_json.get('status') != 'ok':
-            raise APIError('AJAX request to {} is not OK: {}'.format(url, response_json))
+            raise APIError(
+                'AJAX request to {} is not OK: {}'.format(url, response_json),
+                )
         yield from self._sleep_success()
         return response_json
 
@@ -118,7 +132,10 @@ class Client(object):
         try:
             response = json.loads(response)
         except ValueError as e:
-            raise APIError('Bad response for {}: {} Response: {}'.format(url, e, response))
+            raise APIError(
+                'Bad response for {}: {} Response: {}'
+                .format(url, e, response),
+                )
         yield from self._check_api_response(response)
         yield from self._sleep_success()
         return response
@@ -182,10 +199,14 @@ class Client(object):
                 )
         except APILimitError as e:
             raise APILimitError(
-                'API limit was reached during following {}. {}'.format(user.username, e),
+                'API limit was reached during following {}. {}'
+                .format(user.username, e),
                 )
         except APIError as e:
-            raise APIError('API troubles during following {}. {}'.format(user.username, e))
+            raise APIError(
+                'API troubles during following {}. {}'
+                .format(user.username, e),
+                )
         else:
             LOGGER.debug('{} was followed'.format(user.username))
 
@@ -197,7 +218,9 @@ class Client(object):
         @raise APINotAllowedError
         @raise APIError
         '''
-        response = yield from self._api('users/{}/follows'.format(user.instagram_id))
+        response = yield from self._api(
+            'users/{}/follows'.format(user.instagram_id),
+            )
         followed = response['data']
         next_url = response['pagination'].get('next_url')
         while next_url:
@@ -215,7 +238,9 @@ class Client(object):
         @raise APINotAllowedError
         @raise APIError
         '''
-        response = yield from self._api('users/{}/followed-by'.format(user.instagram_id))
+        response = yield from self._api(
+            'users/{}/followed-by'.format(user.instagram_id),
+            )
         followers = response['data']
         return followers
 
@@ -255,7 +280,10 @@ class Client(object):
 
     @asyncio.coroutine
     def _sleep_limit(self):
-        LOGGER.debug('Sleeping for {:.0f} sec because of API limits'.format(self._limit_sleep_time))
+        LOGGER.debug(
+            'Sleeping for {:.0f} sec because of API limits'
+            .format(self._limit_sleep_time),
+            )
         yield from asyncio.sleep(self._limit_sleep_time)
         self._limit_sleep_time *= self._limit_sleep_time_coefficient
 
@@ -265,8 +293,9 @@ class Client(object):
             self._limit_sleep_time = self._limit_sleep_time_min
             self._success_sleep_time = self._success_sleep_time_max
         yield from asyncio.sleep(self._success_sleep_time)
-        self._success_sleep_time = self._success_sleep_time_min + (self._success_sleep_time - \
-            self._success_sleep_time_min) * self._success_sleep_time_coefficient
+        self._success_sleep_time = self._success_sleep_time_min + \
+            (self._success_sleep_time - self._success_sleep_time_min) * \
+            self._success_sleep_time_coefficient
 
     @asyncio.coroutine
     def unfollow(self, user):
@@ -284,10 +313,14 @@ class Client(object):
                 )
         except APILimitError as e:
             raise APILimitError(
-                'API limit was reached during unfollowing {}. {}'.format(user.username, e),
+                'API limit was reached during unfollowing {}. {}'
+                .format(user.username, e),
                 )
         except APIError as e:
-            raise APIError('API troubles during unfollowing {}. {}'.format(user.username, e))
+            raise APIError(
+                'API troubles during unfollowing {}. {}'
+                .format(user.username, e),
+                )
         else:
             LOGGER.debug('{} was unfollowed'.format(user.username))
 

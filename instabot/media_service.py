@@ -11,6 +11,7 @@ from aiohttp.errors import ClientResponseError
 LOGGER = logging.getLogger('instabot.media_service')
 MEDIA_COUNT_MIN = 100
 
+
 class MediaService:
     def __init__(self, configuration):
         self._hashtags = configuration.hashtags
@@ -28,7 +29,8 @@ class MediaService:
         response = yield from response.read()
         response = response.decode('utf-8', errors='ignore')
         match = re.search(
-            r'<script type="text/javascript">window\._sharedData = ([^<]+);</script>',
+            r'<script type="text/javascript">window\._sharedData = ([^<]+);'
+            '</script>',
             response,
             )
         if match is None:
@@ -36,7 +38,9 @@ class MediaService:
         response = json.loads(match.group(1))
         media = response['entry_data']['TagPage'][0]['tag']['media']['nodes']
         media = [m['id'] for m in media]
-        LOGGER.debug('{} media about \"{}\" were fetched'.format(len(media), hashtag))
+        LOGGER.debug(
+            '{} media about \"{}\" were fetched'.format(len(media), hashtag),
+            )
         return media
 
     @asyncio.coroutine
@@ -44,8 +48,11 @@ class MediaService:
         for hashtag in itertools.cycle(self._hashtags):
             if len(self._media) < MEDIA_COUNT_MIN:
                 try:
-                    self._media.extend((yield from self._get_media_by_hashtag(hashtag)))
-                except (IOError, OSError, ClientResponseError, MediaError) as e:
+                    self._media.extend(
+                        (yield from self._get_media_by_hashtag(hashtag)),
+                        )
+                except (IOError, OSError, ClientResponseError, MediaError) \
+                        as e:
                     LOGGER.warning(e)
                     yield from asyncio.sleep(5)
                 else:

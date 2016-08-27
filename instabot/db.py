@@ -7,12 +7,15 @@ from playhouse.shortcuts import RetryOperationalError
 
 LOGGER = logging.getLogger('instabot')
 
+
 class RetryingMySQLDatabase(RetryOperationalError, MySQLDatabase):
     '''
     Automatically reconnecting database class.
-    @see http://docs.peewee-orm.com/en/latest/peewee/database.html#automatic-reconnect
+    @see {@link
+    http://docs.peewee-orm.com/en/latest/peewee/database.html#automatic-reconnect}
     '''
     pass
+
 
 def get_db(configuration):
     '''
