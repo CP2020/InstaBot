@@ -29,7 +29,7 @@ Arguments:
   CONFIGURATION  Path to configuration.yml file.
 '''
 LOGGER = logging.getLogger('instabot')
-__version__ = '0.2.2'
+__version__ = '0.3.0'
 
 
 def install(configuration, db):
