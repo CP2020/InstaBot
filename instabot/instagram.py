@@ -43,12 +43,20 @@ class Client(object):
         loop.run_until_complete(self._do_login())
 
     async def _ajax(self, url, data=None, referer=None):
-        '''
-        @raise APIError
-        @raise APIJSONError
-        @raise APILimitError
-        @raise APINotAllowedError
-        @raise APINotFoundError
+        '''Simulates AJAX request.
+
+        Args:
+            url (str): URL path. e.g.: 'query/'
+            data (dict, optional)
+            referer (str, optional): Last visited URL.
+
+        Raises:
+            APIError
+            APIJSONError
+            APILimitError
+            APINotAllowedError
+            APINotFoundError
+
         '''
         if referer is not None:
             self._referer = referer
@@ -159,7 +167,7 @@ class Client(object):
         Returns:
             List of dicts containing following fields:
             {
-                'id': 123,
+                'id': '123',
                 'username': 'foobar',
             }
 
@@ -173,7 +181,7 @@ class Client(object):
         SINGLE_RESPONSE_SIZE = 50
 
         response = await self._ajax(
-            'query',
+            'query/',
             {
                 'q': 'ig_user({id}) {{  follows.first({count}) {{    count,'
                 '    page_info {{      end_cursor,      has_next_page    }},'
@@ -185,16 +193,15 @@ class Client(object):
                     id=user.instagram_id,
                     count=SINGLE_RESPONSE_SIZE,
                     ),
-                'ref': 'relationships::follow_list'
+                'ref': 'relationships::follow_list',
                 },
             referer=user.get_url(),
             )
-        followed_count = response['follows']['count']
         followed = response['follows']['nodes']
         while response['follows']['page_info']['has_next_page']:
             end_cursor = response['follows']['page_info']['end_cursor']
             response = await self._ajax(
-                'query',
+                'query/',
                 {
                     'q': 'ig_user({id}) {{  follows.after({end_cursor},'
                     ' {count}) {{    count,    page_info {{      end_cursor,'
@@ -207,7 +214,7 @@ class Client(object):
                         end_cursor=end_cursor,
                         count=SINGLE_RESPONSE_SIZE,
                         ),
-                    'ref': 'relationships::follow_list'
+                    'ref': 'relationships::follow_list',
                     },
                 referer=user.get_url(),
                 )
@@ -216,16 +223,45 @@ class Client(object):
         return followed
 
     async def get_some_followers(self, user):
+        '''Fetches some amount of followers of given user.
+
+        Args:
+            user (User): Whose followers should be fetched.
+
+        Returns:
+            List of dicts containing following fields:
+            {
+                'id': '123',
+                'username': 'foobar',
+            }
+
+        Raises:
+            APIJSONError
+            APILimitError
+            APINotAllowedError
+            APIError
+
         '''
-        @raise APIJSONError
-        @raise APILimitError
-        @raise APINotAllowedError
-        @raise APIError
-        '''
-        response = await self._api(
-            'users/{}/followed-by'.format(user.instagram_id),
+        SINGLE_RESPONSE_SIZE = 50
+
+        response = await self._ajax(
+            'query/',
+            {
+                'q': 'ig_user({id}) {{  followed_by.first({count}) {{'
+                '    count,    page_info {{      end_cursor,'
+                '      has_next_page    }},    nodes {{      id,'
+                '      is_verified,      followed_by_viewer,'
+                '      requested_by_viewer,      full_name,'
+                '      profile_pic_url,      username    }}  }}}}'
+                .format(
+                    id=user.instagram_id,
+                    count=SINGLE_RESPONSE_SIZE,
+                    ),
+                'ref': 'relationships::follow_list',
+                },
+            referer=user.get_url(),
             )
-        followers = response['data']
+        followers = response['followed_by']['nodes']
         return followers
 
     async def like(self, media):
