@@ -17,25 +17,23 @@ class FollowingService:
             datetime.timedelta(hours=configuration.following_hours)
         self._stats_service = StatsService.get_instance()
 
-    @asyncio.coroutine
-    def run(self):
+    async def run(self):
         while True:
             try:
-                yield from self._unfollow()
-                yield from self._follow()
+                await self._unfollow()
+                await self._follow()
             except APILimitError as e:
                 LOGGER.debug(e)
             except (APIError, APIJSONError) as e:
                 LOGGER.debug(e)
-                yield from asyncio.sleep(5)
+                await asyncio.sleep(5)
             except (IOError, OSError, ClientResponseError) as e:
                 LOGGER.warning(e)
-                yield from asyncio.sleep(5)
+                await asyncio.sleep(5)
             else:
-                yield from asyncio.sleep(10)
+                await asyncio.sleep(10)
 
-    @asyncio.coroutine
-    def _follow(self):
+    async def _follow(self):
         '''
         @raise APIError
         @raise APIJSONError
@@ -47,7 +45,7 @@ class FollowingService:
                 User.was_followed_at == None,
                 ).order_by(User.following_depth, User.created):
             try:
-                yield from self._client.follow(user)
+                await self._client.follow(user)
             except (APINotAllowedError, APINotFoundError) as e:
                 LOGGER.debug('Can\'t follow {}. {}'.format(user.username, e))
                 # Make user look like he was followed and was unfollowed
@@ -60,8 +58,7 @@ class FollowingService:
                 self._stats_service.increment('followed')
             user.save()
 
-    @asyncio.coroutine
-    def _unfollow(self):
+    async def _unfollow(self):
         '''
         @raise APIError
         @raise APIJSONError
@@ -74,7 +71,7 @@ class FollowingService:
                 (User.was_followed_at <= unfollowing_threshold),
                 ):
             try:
-                yield from self._client.unfollow(user)
+                await self._client.unfollow(user)
             except (APINotAllowedError, APINotFoundError) as e:
                 LOGGER.debug('Can\'t unfollow {}. {}'.format(user.username, e))
             else:

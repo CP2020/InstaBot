@@ -29,11 +29,10 @@ class StatsService:
     def get_instance(cls):
         return cls._instance
 
-    @asyncio.coroutine
-    def run(self):
+    async def run(self):
         hour = 0
         while True:
-            yield from asyncio.sleep(60 * 60)
+            await asyncio.sleep(60 * 60)
             hour += 1
             if hour % 24 == 0:
                 self._daily_counter.report(
