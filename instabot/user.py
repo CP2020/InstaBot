@@ -3,6 +3,7 @@ from peewee import *
 
 database_proxy = Proxy()
 
+
 class User(Model):
     created = DateTimeField(default=datetime.datetime.utcnow)
     following_depth = IntegerField()
