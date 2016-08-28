@@ -261,7 +261,18 @@ class Client(object):
                 },
             referer=user.get_url(),
             )
-        followers = response['followed_by']['nodes']
+        try:
+            followers = response['followed_by']['nodes']
+        except (KeyError, TypeError) as e:
+            raise APINotAllowedError(
+                'Instagram have given unexpected data in '
+                '`get_some_followers`. Response JSON: {response} '
+                'Error: {error}'
+                .format(
+                    response=response,
+                    error=e,
+                    )
+                )
         return followers
 
     async def like(self, media):
