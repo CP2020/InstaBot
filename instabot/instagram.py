@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import json
-from .errors import APIError, APIJSONError, APILimitError, \
+from .errors import APIError, APILimitError, \
     APINotAllowedError, APINotFoundError
 from aiohttp import ClientSession
 
@@ -43,7 +43,7 @@ class Client(object):
         loop.run_until_complete(self._do_login())
 
     async def _ajax(self, url, data=None, referer=None):
-        '''Simulates AJAX request.
+        """Simulates AJAX request.
 
         Args:
             url (str): URL path. e.g.: 'query/'
@@ -57,7 +57,7 @@ class Client(object):
             APINotAllowedError
             APINotFoundError
 
-        '''
+        """
         if referer is not None:
             self._referer = referer
         url = BASE_URL + url
@@ -114,12 +114,12 @@ class Client(object):
         return response_json
 
     async def _do_login(self):
-        '''
+        """
         @raise APIJSONError
         @raise APILimitError
         @raise APINotAllowedError
         @raise APIError
-        '''
+        """
         await self._open(BASE_URL)
         self._update_csrf_token()
         await self._ajax(
@@ -133,13 +133,13 @@ class Client(object):
         self.id = self._session.cookies['ds_user_id'].value
 
     async def follow(self, user):
-        '''
+        """
         @raise APIJSONError
         @raise APILimitError
         @raise APINotAllowedError
         @raise APINotFoundError
         @raise APIError
-        '''
+        """
         try:
             await self._ajax(
                 'web/friendships/{}/follow/'.format(user.instagram_id),
@@ -159,7 +159,7 @@ class Client(object):
             LOGGER.debug('{} was followed'.format(user.username))
 
     async def get_followed(self, user):
-        '''Fetches information about people followed by given user.
+        """Fetches information about people followed by given user.
 
         Args:
             user (User): Whose subscriptions should be fetched.
@@ -177,8 +177,8 @@ class Client(object):
             APINotAllowedError
             APIError
 
-        '''
-        SINGLE_RESPONSE_SIZE = 50
+        """
+        single_response_size = 50
 
         response = await self._ajax(
             'query/',
@@ -191,7 +191,7 @@ class Client(object):
                 '      username    }}  }}}}'
                 .format(
                     id=user.instagram_id,
-                    count=SINGLE_RESPONSE_SIZE,
+                    count=single_response_size,
                     ),
                 'ref': 'relationships::follow_list',
                 },
@@ -212,7 +212,7 @@ class Client(object):
                     .format(
                         id=user.instagram_id,
                         end_cursor=end_cursor,
-                        count=SINGLE_RESPONSE_SIZE,
+                        count=single_response_size,
                         ),
                     'ref': 'relationships::follow_list',
                     },
@@ -223,7 +223,7 @@ class Client(object):
         return followed
 
     async def get_some_followers(self, user):
-        '''Fetches some amount of followers of given user.
+        """Fetches some amount of followers of given user.
 
         Args:
             user (User): Whose followers should be fetched.
@@ -241,8 +241,8 @@ class Client(object):
             APINotAllowedError
             APIError
 
-        '''
-        SINGLE_RESPONSE_SIZE = 50
+        """
+        single_response_size = 50
 
         response = await self._ajax(
             'query/',
@@ -255,7 +255,7 @@ class Client(object):
                 '      profile_pic_url,      username    }}  }}}}'
                 .format(
                     id=user.instagram_id,
-                    count=SINGLE_RESPONSE_SIZE,
+                    count=single_response_size,
                     ),
                 'ref': 'relationships::follow_list',
                 },
@@ -276,13 +276,13 @@ class Client(object):
         return followers
 
     async def like(self, media):
-        '''
+        """
         @raise APIError
         @raise APIJSONError
         @raise APILimitError
         @raise APINotAllowedError
         @raise APINotFoundError
-        '''
+        """
         try:
             await self._ajax('web/likes/{}/like/'.format(media))
         except APILimitError as e:
@@ -324,15 +324,15 @@ class Client(object):
             self._success_sleep_time_coefficient
 
     async def unfollow(self, user):
-        '''
+        """
         @raise APIError
         @raise APIJSONError
         @raise APILimitError
         @raise APINotAllowedError
         @raise APINotFoundError
-        '''
+        """
         try:
-            response = await self._ajax(
+            await self._ajax(
                 'web/friendships/{}/unfollow/'.format(user.instagram_id),
                 referer=user.get_url(),
                 )
