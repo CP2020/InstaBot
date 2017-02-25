@@ -2,6 +2,7 @@
 
 # Configuration
 conf*.yml
+conf*.yaml
 
 # Logging
 *.log
@@ -13,3 +14,6 @@ log.log.*
 /lib/
 /pip-selfcheck.json
 /share/
+instabotenv/
+db_data/
+
