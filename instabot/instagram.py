@@ -1,6 +1,8 @@
 import asyncio
 import logging
 import json
+import random
+
 from .errors import APIError, APILimitError, \
     APINotAllowedError, APINotFoundError
 from aiohttp import ClientSession
@@ -222,6 +224,56 @@ class Client(object):
         LOGGER.debug('{} followed users were fetched'.format(len(followed)))
         return followed
 
+    async def get_following_page(self, user, cursor=None):
+        """
+        Args:
+            user (User): User whose followers should be fetched
+            cursor: The next page to retrieve, if possible.
+        :param user:
+        :param cursor:
+        :return:
+        """
+        q = 'ig_user(%s) {' % user.instagram_id,
+        qcursor = ' followed_by.first(20) {'
+        if cursor is not None:
+            qcursor = ' followed_by.after(%s, 20) {' % cursor
+        q += qcursor + '''
+            count,
+            page_info {
+              end_cursor,
+              has_next_page
+            },
+            nodes {
+                id,
+                is_verified,
+                followed_by {count},
+                follows {count},
+                followed_by_viewer,
+                follows_viewer,
+                requested_by_viewer,
+                full_name,
+                profile_pic_url,
+                username
+                }
+            }
+        }
+        '''
+        data = {'q': q, 'ref': 'relationships::follow_list'}
+        response = await self._ajax('query/', data, referer=user.get_url())
+        try:
+            followers = response['followed_by']['nodes']
+            page_info = response['followed_by']['page_info']
+        except (KeyError, TypeError) as e:
+            raise APINotAllowedError(
+                'Instagram have given unexpected data in '
+                '`get_some_followers`. Response JSON: {response} '
+                'Error: {error}'.format(
+                    response=response,
+                    error=e,
+                )
+            )
+        return followers, page_info['end_cursor'], page_info['has_next_page']
+
     async def get_some_followers(self, user):
         """Fetches some amount of followers of given user.
 
@@ -242,37 +294,22 @@ class Client(object):
             APIError
 
         """
-        single_response_size = 50
-
-        response = await self._ajax(
-            'query/',
-            {
-                'q': 'ig_user({id}) {{  followed_by.first({count}) {{'
-                '    count,    page_info {{      end_cursor,'
-                '      has_next_page    }},    nodes {{      id,'
-                '      is_verified,      followed_by_viewer,'
-                '      requested_by_viewer,      full_name,'
-                '      profile_pic_url,      username    }}  }}}}'
-                .format(
-                    id=user.instagram_id,
-                    count=single_response_size,
-                    ),
-                'ref': 'relationships::follow_list',
-                },
-            referer=user.get_url(),
-            )
-        try:
-            followers = response['followed_by']['nodes']
-        except (KeyError, TypeError) as e:
-            raise APINotAllowedError(
-                'Instagram have given unexpected data in '
-                '`get_some_followers`. Response JSON: {response} '
-                'Error: {error}'
-                .format(
-                    response=response,
-                    error=e,
-                    )
-                )
+        page_limit = 3
+        followers = []
+        get_next = True
+        cursor = None  # Eventually we will check if we have a
+        # cached page and use that.
+        LOGGER.debug('Fetching followers of {}'.format(user.username))
+        while get_next and page_limit > 0:
+            next_followers, cursor, get_next = await self.get_following_page(
+                user=user,
+                cursor=cursor)
+            followers = followers + next_followers
+            page_limit -= 1
+            await asyncio.sleep(random.randint(1, 5))
+        # TODO: Cache cursor for continuation of this, if needed.
+        LOGGER.debug('Fetched {} followers of {}'
+                     .format(20 * page_limit, user.username))
         return followers
 
     async def like(self, media):
