@@ -1,0 +1,13 @@
+mysql:
+  image: mysql
+  ports:
+    - "3306:3306"
+  expose:
+     - "3306"
+  environment:
+    - MYSQL_ROOT_PASSWORD=instabotisgrate
+    - MYSQL_DATABASE=instagram
+    - MYSQL_USER=instabot
+    - MYSQL_PASSWORD=GT8H!b]5,9}A7
+  volumes:
+    - ./db_data:/var/lib/mysql

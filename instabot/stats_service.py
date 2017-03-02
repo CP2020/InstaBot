@@ -20,6 +20,8 @@ class Counter:
 
 
 class StatsService:
+    _instance = None
+
     def __init__(self):
         self._hourly_counter = Counter()
         self._daily_counter = Counter()

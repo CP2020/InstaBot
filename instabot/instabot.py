@@ -2,7 +2,6 @@ import asyncio
 import datetime
 import logging
 import logging.config
-import sys
 from .configuration import Configuration
 from .db import get_db
 from .errors import ConfigurationError
