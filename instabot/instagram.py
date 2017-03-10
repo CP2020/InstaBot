@@ -4,7 +4,7 @@ import json
 import random
 
 from .errors import APIError, APILimitError, \
-    APINotAllowedError, APINotFoundError
+    APINotAllowedError, APINotFoundError, APIFailError
 from aiohttp import ClientSession
 
 BASE_URL = 'https://www.instagram.com/'
@@ -13,7 +13,7 @@ USER_AGENT = 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:48.0) ' \
     'Gecko/20100101 Firefox/48.0'
 
 
-class Client(object):
+class Client:
     def __init__(self, configuration):
         self._limit_sleep_time_coefficient = configuration \
             .instagram_limit_sleep_time_coefficient
@@ -54,6 +54,7 @@ class Client(object):
 
         Raises:
             APIError
+            APIFailError
             APIJSONError
             APILimitError
             APINotAllowedError
@@ -108,10 +109,19 @@ class Client(object):
             else:
                 await self._sleep_success()
                 raise APIError(message)
-        if response_json.get('status') != 'ok':
+        status = response_json.get('status')
+        if status == 'fail':
+            raise APIFailError(
+                'AJAX request to {} was failed: {}'.format(url, response_json),
+                )
+        elif status != 'ok':
             raise APIError(
                 'AJAX request to {} is not OK: {}'.format(url, response_json),
                 )
+        LOGGER.debug('Request: {url} Response: {response}'.format(
+            url=url,
+            response=response_json
+            ))
         await self._sleep_success()
         return response_json
 
@@ -361,12 +371,16 @@ class Client(object):
             self._success_sleep_time_coefficient
 
     async def unfollow(self, user):
-        """
-        @raise APIError
-        @raise APIJSONError
-        @raise APILimitError
-        @raise APINotAllowedError
-        @raise APINotFoundError
+        """Unfollows certain user.
+
+        Raises:
+            APIError
+            APIFailError
+            APIJSONError
+            APILimitError
+            APINotAllowedError
+            APINotFoundError
+
         """
         try:
             await self._ajax(
@@ -376,6 +390,11 @@ class Client(object):
         except APILimitError as e:
             raise APILimitError(
                 'API limit was reached during unfollowing {}. {}'
+                .format(user.username, e),
+                )
+        except APIFailError as e:
+            raise APIFailError(
+                'API troubles during unfollowing {}. {}'
                 .format(user.username, e),
                 )
         except APIError as e:
