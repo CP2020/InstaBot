@@ -42,7 +42,7 @@ class FollowingService:
         unfollowing_threshold = datetime.datetime.utcnow() - \
             self._following_timedelta
         for user in User.select().where(
-                        User.was_followed_at is None,
+                        User.was_followed_at == None,
                 ).order_by(User.following_depth, User.created):
             try:
                 await self._client.follow(user)
@@ -70,7 +70,7 @@ class FollowingService:
         unfollowing_threshold = datetime.datetime.utcnow() - \
             self._following_timedelta
         for user in User.select().where(
-                (User.is_followed is True) &
+                (User.is_followed == True) &
                 (User.was_followed_at <= unfollowing_threshold),
                 ):
             try:

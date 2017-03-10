@@ -36,13 +36,13 @@ class UserService:
 
     async def _ensure_enough_users(self):
         users_to_follow_count = User.select() \
-            .where(User.was_followed_at is None) \
+            .where(User.was_followed_at == None) \
             .count()
         LOGGER.debug('{} users to follow found'.format(users_to_follow_count))
         if users_to_follow_count < self._users_to_follow_cache_size:
             last_users_to_follow_count = users_to_follow_count
             for user in User.select() \
-                .where(User.were_followers_fetched is False) \
+                .where(User.were_followers_fetched == False) \
                 .order_by(
                     User.following_depth,
                     User.created,
