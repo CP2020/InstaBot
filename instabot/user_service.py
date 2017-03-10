@@ -85,6 +85,6 @@ class UserService:
                 if users_to_follow_count >= self._users_to_follow_cache_size:
                     break
             LOGGER.debug(
-                '%d users saved in DB',
+                '%d users were saved in DB',
                 users_to_follow_count - last_users_to_follow_count,
                 )
