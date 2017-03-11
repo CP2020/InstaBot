@@ -2,7 +2,7 @@ import asyncio
 import datetime
 import logging
 from .errors import APIError, APIJSONError, APILimitError, \
-    APINotAllowedError, APINotFoundError
+    APINotAllowedError, APINotFoundError, APIFailError
 from .stats_service import StatsService
 from .user import User
 from aiohttp.errors import ClientResponseError
@@ -42,7 +42,7 @@ class FollowingService:
         unfollowing_threshold = datetime.datetime.utcnow() - \
             self._following_timedelta
         for user in User.select().where(
-                        User.was_followed_at is None,
+                        User.was_followed_at == None,
                 ).order_by(User.following_depth, User.created):
             try:
                 await self._client.follow(user)
@@ -59,19 +59,29 @@ class FollowingService:
             user.save()
 
     async def _unfollow(self):
-        """
-        @raise APIError
-        @raise APIJSONError
-        @raise APILimitError
+        """Tries to unfollow all of the users that should be unfollowed.
+
+        Raises:
+            APIError
+            APIJSONError
+            APILimitError
+
         """
         unfollowing_threshold = datetime.datetime.utcnow() - \
             self._following_timedelta
         for user in User.select().where(
-                (User.is_followed is True) &
+                (User.is_followed == True) &
                 (User.was_followed_at <= unfollowing_threshold),
                 ):
             try:
                 await self._client.unfollow(user)
+            except APIFailError as e:
+                LOGGER.info(
+                    'It seems like {} can\'t be unfollowed properly. '
+                    'Skipping her. {}'
+                    .format(user.username, e)
+                    )
+                self._stats_service.increment('unfollowed')
             except (APINotAllowedError, APINotFoundError) as e:
                 LOGGER.debug('Can\'t unfollow {}. {}'.format(user.username, e))
             else:

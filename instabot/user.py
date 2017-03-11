@@ -17,7 +17,7 @@ class User(Model):
         database = database_proxy
         indexes = (
             (('is_followed', 'was_followed_at'), False),
-            (('were_followers_fetched', 'following_depth', 'created'), False)
+            (('were_followers_fetched', 'following_depth', 'created'), False),
             )
 
     def get_url(self):

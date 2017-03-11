@@ -3,6 +3,10 @@ class APIError(Exception):
         super(APIError, self).__init__(str(code))
 
 
+class APIFailError(APIError):
+    pass
+
+
 class APIJSONError(Exception):
     pass
 
