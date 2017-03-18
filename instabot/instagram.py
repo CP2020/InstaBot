@@ -1,6 +1,8 @@
 import asyncio
 import logging
 import json
+import re
+import urllib.parse
 
 from .errors import APIError, APILimitError, \
     APINotAllowedError, APINotFoundError, APIFailError
@@ -283,6 +285,53 @@ class Client:
                 )
             )
         return followers, end_cursor, has_next_page
+
+    async def get_media_by_hashtag(self, hashtag):
+        """Fetches some media about specified hashtag.
+
+        Returns:
+            List of media IDs (strings)
+
+        Args:
+            hashtag (str): Hashtag to fetch
+
+        Raises:
+            APIError
+            IOError
+            OSError
+            ClientResponseError
+
+        """
+        url = '{}explore/tags/{}/'.format(
+            BASE_URL,
+            urllib.parse.quote(hashtag.encode('utf-8')),
+            )
+        response = await self._session.get(url)
+        response = await response.read()
+        response = response.decode('utf-8', errors='ignore')
+        match = re.search(
+            r'<script type="text/javascript">[\w\.]+\s*=\s*([^<]+);'
+            '</script>',
+            response,
+            )
+        if match is None:
+            raise APIError('Can\'t find JSON in the response: {}', response)
+        try:
+            response = json.loads(match.group(1))
+        except ValueError as e:
+            raise APIError('Can\'t parse response JSON: {}'.format(e))
+        try:
+            media = response['entry_data']['TagPage'][0]['tag']
+            media = media['media']['nodes']
+            media = [media_item['id'] for media_item in media]
+        except (KeyError, TypeError) as e:
+            raise APIError(
+                'Can\'t obtain media from response JSON: {}'.format(e),
+                )
+        LOGGER.debug(
+            '{} media about \"{}\" were fetched'.format(len(media), hashtag),
+            )
+        return media
 
     async def get_some_followers(self, user):
         """Fetches some amount of followers of given user.

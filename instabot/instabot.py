@@ -28,7 +28,7 @@ Arguments:
   CONFIGURATION  Path to configuration.yml file.
 '''
 LOGGER = logging.getLogger('instabot')
-__version__ = '0.3.3'
+__version__ = '0.3.4'
 
 
 def install(configuration, db):
@@ -86,13 +86,13 @@ def run(configuration):
     following_service = FollowingService(following_client, configuration)
     loop.create_task(following_service.run())
 
+    like_client = instagram.Client(configuration)
     try:
-        media_service = MediaService(configuration)
+        media_service = MediaService(like_client, configuration)
     except ConfigurationError as e:
         LOGGER.info('MediaService wasn\'t started. {}'.format(e))
     else:
         loop.create_task(media_service.run())
-        like_client = instagram.Client(configuration)
         like_service = LikeService(like_client, media_service)
         loop.create_task(like_service.run())
 
