@@ -32,7 +32,7 @@ class UserService:
                 LOGGER.warning(e)
                 await asyncio.sleep(5)
             else:
-                await asyncio.sleep(60)
+                await asyncio.sleep(60 * 5)
 
     async def _ensure_enough_users(self):
         users_to_follow_count = User.select() \
