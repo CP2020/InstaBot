@@ -10,8 +10,8 @@ from aiohttp import ClientSession
 
 BASE_URL = 'https://www.instagram.com/'
 LOGGER = logging.getLogger('instabot.instagram')
-USER_AGENT = 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:48.0) ' \
-    'Gecko/20100101 Firefox/48.0'
+USER_AGENT = 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:52.0) ' \
+    'Gecko/20100101 Firefox/52.0'
 
 
 class Client:
@@ -88,11 +88,6 @@ class Client:
         try:
             response_json = json.loads(text)
         except ValueError as e:
-            if 'too many requests' in text or 'temporarily blocked' in text:
-                await self._sleep_limit()
-                raise APILimitError(
-                    'Too many AJAX requests. URL: {}'.format(url),
-                    )
             message = 'AJAX request to {url} is not JSON: {error} ' \
                 'Response ({status}): \"{text}\"'.format(
                     url=url,
@@ -112,6 +107,12 @@ class Client:
                 raise APIError(message)
         status = response_json.get('status')
         if status == 'fail':
+            message = response_json.get('message')
+            if isinstance(message, str) and 'temporarily blocked' in message:
+                await self._sleep_limit()
+                raise APILimitError(
+                    'Too many AJAX requests. URL: {}'.format(url),
+                    )
             raise APIFailError(
                 'AJAX request to {} was failed: {}'.format(url, response_json),
                 )
@@ -121,7 +122,7 @@ class Client:
                 )
         LOGGER.debug('Request: {url} Response: {response}'.format(
             url=url,
-            response=response_json
+            response=response_json,
             ))
         await self._sleep_success()
         return response_json
