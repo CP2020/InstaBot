@@ -111,7 +111,10 @@ class Client:
             if isinstance(message, str) and 'temporarily blocked' in message:
                 await self._sleep_limit()
                 raise APILimitError(
-                    'Too many AJAX requests. URL: {}'.format(url),
+                    'AJAX request to {url} was blocked: {response}'.format(
+                        url=url,
+                        response=response_json,
+                        ),
                     )
             raise APIFailError(
                 'AJAX request to {} was failed: {}'.format(url, response_json),
