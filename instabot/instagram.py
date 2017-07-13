@@ -7,11 +7,11 @@ import urllib.parse
 from .errors import APIError, APILimitError, \
     APINotAllowedError, APINotFoundError, APIFailError
 from aiohttp import ClientSession
+from http import HTTPStatus
 
 BASE_URL = 'https://www.instagram.com/'
 LOGGER = logging.getLogger('instabot.instagram')
-USER_AGENT = 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:52.0) ' \
-    'Gecko/20100101 Firefox/52.0'
+USER_AGENT = 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:54.0) Gecko/20100101 Firefox/54.0'
 
 
 class Client:
@@ -34,7 +34,7 @@ class Client:
         self._session = ClientSession(
             cookies={
                 'ig_pr': '1',
-                'ig_vw': '1280',
+                'ig_vw': '1920',
                 },
             headers={
                 'User-Agent': USER_AGENT,
@@ -64,75 +64,60 @@ class Client:
         """
         if referer is not None:
             self._referer = referer
-        url = BASE_URL + url
+        url = f'{BASE_URL}{url}'
         headers = {
             'Referer': self._referer,
             'X-CSRFToken': self._csrf_token,
             }
-        response = await self._session.post(
+        async with self._session.post(
             url,
             data=data,
             headers=headers,
-            )
-        if response.status == 404:
-            response.close()
-            await self._sleep_success()
-            raise APINotFoundError(
-                'AJAX response status code is 404 for {}'.format(url),
-                )
-        elif 500 <= response.status < 600:
-            response.close()
-            await self._sleep_success()
-            raise APIError(response.status)
-        text = await response.text()
-        try:
-            response_json = json.loads(text)
-        except ValueError as e:
-            message = 'AJAX request to {url} is not JSON: {error} ' \
-                'Response ({status}): \"{text}\"'.format(
-                    url=url,
-                    error=e,
-                    status=response.status,
-                    text=text,
-                    response=response,
-                    ),
-            if response.status == 200:
+            ) as response:
+            if response.status == HTTPStatus.NOT_FOUND:
+                response.close()
                 await self._sleep_success()
-                raise APIError(message)
-            elif response.status == 400:
+                raise APINotFoundError(f'AJAX response status code is 404 for {url}')
+            elif HTTPStatus.INTERNAL_SERVER_ERROR <= response.status:
+                response.close()
                 await self._sleep_success()
-                raise APINotAllowedError(message)
-            else:
-                await self._sleep_success()
-                raise APIError(message)
-        status = response_json.get('status')
+                raise APIError(response.status)
+            text = await response.text()
+            try:
+                response_dict = json.loads(text)
+            except ValueError as err:
+                reason = f'AJAX request to {url} is not JSON: {err} Response ({response.status}): \"{text}\"'
+                if response.status == HTTPStatus.OK:
+                    await self._sleep_success()
+                    raise APIError(reason)
+                elif response.status == HTTPStatus.BAD_REQUEST:
+                    await self._sleep_success()
+                    raise APINotAllowedError(reason)
+                else:
+                    await self._sleep_success()
+                    raise APIError(reason)
+        status = response_dict.get('status')
         if status == 'fail':
-            message = response_json.get('message')
+            message = response_dict.get('message')
             if isinstance(message, str) and 'temporarily blocked' in message:
                 await self._sleep_limit()
-                raise APILimitError(
-                    'Too many AJAX requests. URL: {}'.format(url),
-                    )
-            raise APIFailError(
-                'AJAX request to {} was failed: {}'.format(url, response_json),
-                )
+                raise APILimitError(f'AJAX request to {url} was blocked: {response_dict}')
+            raise APIFailError(f'AJAX request to {url} was failed: {response_dict}')
         elif status != 'ok':
-            raise APIError(
-                'AJAX request to {} is not OK: {}'.format(url, response_json),
-                )
-        LOGGER.debug('Request: {url} Response: {response}'.format(
-            url=url,
-            response=response_json,
-            ))
+            raise APIError(f'AJAX request to {url} is not OK: {response_dict}')
+        LOGGER.debug(f'Request: {url} Response: {response_dict}')
         await self._sleep_success()
-        return response_json
+        return response_dict
 
     async def _do_login(self):
-        """
-        @raise APIJSONError
-        @raise APILimitError
-        @raise APINotAllowedError
-        @raise APIError
+        """Logins client session.
+
+        Raises:
+            APIJSONError
+            APILimitError
+            APINotAllowedError
+            APIError
+
         """
         await self._open(BASE_URL)
         self._update_csrf_token()
@@ -144,7 +129,12 @@ class Client:
                 },
             )
         self._update_csrf_token()
-        self.id = self._session.cookies['ds_user_id'].value
+        try:
+            self.id = self._session.cookies['ds_user_id'].value
+        except KeyError as err:
+            reason = 'Can\'t obtain user ID from cookies.'
+            LOGGER.exception(reason)
+            raise APIError(reason) from err
 
     async def follow(self, user):
         """
@@ -391,6 +381,15 @@ class Client:
             LOGGER.debug('Liked {}'.format(media))
 
     async def _open(self, url):
+        """Opens given URL (HTTP GET).
+
+        Args:
+            url (str)
+
+        Returns:
+            str: Response.
+
+        """
         headers = {
             'Referer': self._referer,
             }

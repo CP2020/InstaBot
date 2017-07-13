@@ -1,6 +1,6 @@
 # InstaBot
 
-Instagram bot written in Python 3.5 that cycles through specified hashtags and automatically likes pictures with those hashtags to get more followers. The bot also follows people and unfollows them after specified period of time. Unfollowed people are saved in DB to prevent following them again. To find new people to follow it uses list of followers of people you have followed.
+Instagram bot written in Python 3 that cycles through specified hashtags and automatically likes pictures with those hashtags to get more followers. The bot also follows people and unfollows them after specified period of time. Unfollowed people are saved in DB to prevent following them again. To find new people to follow it uses list of followers of people you have followed.
 
 During installation process it saves people followed by you as "followed long time ago" and unfollows them at the first start.
 
@@ -8,12 +8,23 @@ The bot doesn't use Instagram API so all credentials you need are your login and
 
 ## Deployment
 
-    $ virtualenv --python=/usr/bin/python3 instabotenv
-    $ cd instabotenv
-    $ source bin/activate
-    (instabotenv) $ git clone https://github.com/quasiyoke/InstaBot.git
-    (instabotenv) $ cd InstaBot
-    (instabotenv) $ pip install -r requirements.txt
+```sh
+docker network create \
+    --subnet=172.21.0.0/24 \
+    instabot
+docker run \
+    --name=instabot-mysql \
+    --net=instabot \
+    --ip=172.21.0.2 \
+    --env="MYSQL_ROOT_PASSWORD=ZEbMKcFQppk8m8PR3b" \
+    --env="MYSQL_DATABASE=instabot" \
+    --env="MYSQL_USER=instabot" \
+    --env="MYSQL_PASSWORD=KbWj0Eua78YGLNLf3K" \
+    --volume=`pwd`/lib:/var/lib/mysql \
+    --detach \
+    mysql:5.7
+docker build --tag=instabot .
+```
 
 Create MySQL DB:
 
@@ -30,10 +41,10 @@ credentials:
   username: "your_username"
   password: "eKeFB2;AW6fS}z"
 db:
-  host: "localhost"
-  name: "instagram"
+  host: "172.21.0.2"
+  name: "instabot"
   user: "instabot"
-  password: "GT8H!b]5,9}A7"
+  password: "KbWj0Eua78YGLNLf3K"
 following_hours: 120
 hashtags:
   - I
@@ -56,14 +67,6 @@ logging:
       class: logging.StreamHandler
       level: DEBUG
       formatter: simple
-    file:
-      class: logging.handlers.RotatingFileHandler
-      level: DEBUG
-      formatter: simple
-      filename: log.log
-      maxBytes: 10485760
-      backupCount: 10
-      encoding: utf-8
   loggers:
     instabot:
       level: DEBUG
@@ -81,10 +84,14 @@ Where:
 * `logging` — logging setup as described in [this howto](https://docs.python.org/3/howto/logging.html).
 * `users_to_follow_cache_size` — how much users should be fetched for following. The cache is being filled in once a minute. Optional. By default bot won't follow anybody.
 
-Create necessary DB tables:
+Now you may run the bot:
 
-    (instabotenv) $ ./instabot_runner.py install configuration.yml
-
-Run:
-
-    (instabotenv) $ ./instabot_runner.py configuration.yml
+```sh
+docker run \
+    --name=instabot \
+    --net=instabot \
+    --ip=172.21.0.10 \
+    --volume=`pwd`/configuration:/configuration \
+    --detach \
+    instabot
+```
