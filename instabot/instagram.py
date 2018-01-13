@@ -312,9 +312,9 @@ class Client:
         except ValueError as e:
             raise APIError('Can\'t parse response JSON: {}'.format(e))
         try:
-            media = response['entry_data']['TagPage'][0]['tag']
-            media = media['media']['nodes']
-            media = [media_item['id'] for media_item in media]
+            tag = response['entry_data']['TagPage'][0]['graphql']['hashtag']
+            edges = tag['edge_hashtag_to_media']['edges']
+            media = [edge['node']['id'] for edge in edges]
         except (KeyError, TypeError) as e:
             raise APIError(
                 'Can\'t obtain media from response JSON: {}'.format(e),
